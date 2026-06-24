@@ -1,0 +1,1734 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Co-Resilience NCKU | 校園多元族群動態路徑導引與即時回報系統</title>
+  
+  <!-- Tailwind CSS v4.0 Play CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Leaflet.js CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+  <!-- FontAwesome for Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+  <!-- Google Fonts: Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS Custom configuration -->
+  <style type="text/tailwindcss">
+    @custom-variant dark (&:where(.dark, .dark *));
+
+    @theme {
+      --font-sans: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      
+      /* Custom design tokens mapped to CSS variables for dynamic theme toggling */
+      --color-ios-bg-body: var(--ios-bg-body);
+      --color-ios-bg-container: var(--ios-bg-container);
+      --color-ios-inner-card: var(--ios-inner-card);
+      --color-ios-border: var(--ios-border);
+      --color-ios-border-white-5: var(--ios-border-white-5);
+      --color-ios-text-primary: var(--ios-text-primary);
+      --color-ios-text-secondary: var(--ios-text-secondary);
+      --color-ios-text-muted: var(--ios-text-muted);
+    }
+  </style>
+
+  <style>
+    :root {
+      /* Light mode styles */
+      --ios-bg-body: #f1f5f9;
+      --ios-bg-container: #ffffff;
+      
+      --ios-card-bg: rgba(255, 255, 255, 0.75);
+      --ios-card-border: rgba(0, 0, 0, 0.08);
+      
+      --ios-inner-card: #f8fafc;
+      --ios-inner-border: rgba(0, 0, 0, 0.05);
+      
+      --ios-input-bg: rgba(0, 0, 0, 0.02);
+      --ios-input-border: rgba(0, 0, 0, 0.1);
+      
+      --ios-text-primary: #0f172a;
+      --ios-text-secondary: #475569;
+      --ios-text-muted: #94a3b8;
+      
+      --ios-border-white-5: rgba(0, 0, 0, 0.04);
+    }
+
+    .dark {
+      /* Dark mode styles (maintaining the original sleek premium iOS feeling) */
+      --ios-bg-body: #090b11;
+      --ios-bg-container: #0b0d16;
+      
+      --ios-card-bg: rgba(17, 24, 39, 0.65);
+      --ios-card-border: rgba(255, 255, 255, 0.08);
+      
+      --ios-inner-card: rgba(10, 11, 18, 0.5);
+      --ios-inner-border: rgba(255, 255, 255, 0.05);
+      
+      --ios-input-bg: rgba(0, 0, 0, 0.25);
+      --ios-input-border: rgba(255, 255, 255, 0.1);
+      
+      --ios-text-primary: #f1f5f9;
+      --ios-text-secondary: #94a3b8;
+      --ios-text-muted: #64748b;
+      
+      --ios-border-white-5: rgba(255, 255, 255, 0.05);
+    }
+
+    /* Safe Area Insets for iOS Home Indicator */
+    .safe-bottom {
+      padding-bottom: calc(env(safe-area-inset-bottom) + 1rem);
+    }
+    .safe-bottom-margin {
+      margin-bottom: calc(env(safe-area-inset-bottom) + 4.5rem);
+    }
+  </style>
+
+  <style>
+    /* Reset all button borders to ensure completely borderless look in both light and dark themes */
+    button {
+      border: none !important;
+      outline: none !important;
+    }
+
+    /* Custom Scrollbar for iOS feel */
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(120, 120, 120, 0.3);
+      border-radius: 99px;
+    }
+
+    /* Glassmorphism utility */
+    .glass-effect {
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      background-color: var(--ios-card-bg);
+      border: 1px solid var(--ios-card-border);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .glass-input {
+      background-color: var(--ios-input-bg);
+      border: 1px solid var(--ios-input-border);
+      color: var(--ios-text-primary);
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .glass-input:focus {
+      outline: none;
+      border-color: #06b6d4;
+      box-shadow: 0 0 12px rgba(6, 182, 212, 0.25);
+    }
+
+    /* Draggable Marker Glowing effect */
+    .leaflet-marker-icon {
+      filter: drop-shadow(0px 0px 8px rgba(6, 182, 212, 0.8));
+    }
+
+    /* Neon Pulse Warning */
+    @keyframes pulse-red-neon {
+      0%, 100% {
+        border-color: rgba(239, 68, 68, 0.4);
+        box-shadow: 0 0 10px rgba(239, 68, 68, 0.1);
+      }
+      50% {
+        border-color: rgba(239, 68, 68, 0.9);
+        box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
+      }
+    }
+    .severe-alert {
+      animation: pulse-red-neon 2s infinite ease-in-out;
+    }
+
+    /* Success checkmark SVG animation */
+    .checkmark {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      display: block;
+      stroke-width: 3;
+      stroke: #10b981;
+      stroke-miterlimit: 10;
+      box-shadow: inset 0px 0px 0px #10b981;
+      animation: fill .4s ease-in-out .4s forwards, scale .3s ease-in-out .9s both;
+      margin: 0 auto;
+    }
+    .checkmark__circle {
+      stroke-dasharray: 166;
+      stroke-dashoffset: 166;
+      stroke-width: 3;
+      stroke-miterlimit: 10;
+      stroke: #10b981;
+      fill: none;
+      animation: stroke .6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+    }
+    .checkmark__check {
+      transform-origin: 50% 50%;
+      stroke-dasharray: 48;
+      stroke-dashoffset: 48;
+      animation: stroke .3s cubic-bezier(0.65, 0, 0.45, 1) .8s forwards;
+    }
+
+    @keyframes stroke {
+      100% {
+        stroke-dashoffset: 0;
+      }
+    }
+    @keyframes scale {
+      0%, 100% {
+        transform: none;
+      }
+      50% {
+        transform: scale3d(1.1, 1.1, 1);
+      }
+    }
+    @keyframes fill {
+      100% {
+        box-shadow: inset 0px 0px 0px 40px rgba(16, 185, 129, 0.15);
+      }
+    }
+
+    /* Scanline laser animation */
+    @keyframes scanline {
+      0% {
+        top: 0%;
+      }
+      50% {
+        top: 100%;
+      }
+      100% {
+        top: 0%;
+      }
+    }
+    .scan-laser {
+      animation: scanline 3s infinite linear;
+    }
+  </style>
+</head>
+<body class="bg-ios-bg-body text-ios-text-primary font-sans min-h-screen antialiased flex flex-col justify-between selection:bg-cyan-500/30 transition-colors duration-300">
+
+  <!-- Main Container (Restricting width on Desktop to look like iOS device) -->
+  <div class="w-full max-w-md mx-auto min-h-screen flex flex-col bg-ios-bg-container shadow-2xl relative border-x border-ios-border pb-24 transition-colors duration-300">
+    
+    <!-- HEADER -->
+    <header class="sticky top-0 z-30 glass-effect border-b bg-white/80 border-slate-200/60 dark:bg-slate-900/70 dark:border-white/5 px-6 py-4 flex flex-col gap-1.5 transition-colors duration-300">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="flex h-3 w-3 relative">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-3 w-3 bg-cyan-500"></span>
+          </span>
+          <h1 class="text-xl font-bold tracking-tight bg-gradient-to-r from-cyan-400 via-indigo-300 to-violet-400 bg-clip-text text-transparent">
+            Co-Resilience NCKU
+          </h1>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="toggleTheme()" class="w-8 h-8 rounded-full flex items-center justify-center bg-ios-inner-card text-ios-text-secondary hover:text-ios-text-primary cursor-pointer active:scale-90 transition-all duration-200" title="切換主題">
+            <i id="theme-icon" class="fa-solid fa-moon"></i>
+          </button>
+          <button onclick="openLoginModal()" id="btn-admin-login" class="w-8 h-8 rounded-full flex items-center justify-center bg-ios-inner-card text-ios-text-secondary hover:text-ios-text-primary cursor-pointer active:scale-90 transition-all duration-200" title="管理員登入">
+            <i class="fa-solid fa-user-gear"></i>
+          </button>
+          <button onclick="logoutAdmin()" id="btn-admin-logout" class="hidden w-8 h-8 rounded-full flex items-center justify-center bg-rose-500/10 text-rose-500 hover:text-rose-600 cursor-pointer active:scale-90 transition-all duration-200" title="登出管理系統">
+            <i class="fa-solid fa-right-from-bracket"></i>
+          </button>
+          <span id="badge-mockup" class="text-[10px] font-semibold px-2 py-0.5 bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 rounded-full">
+            Mobile Mockup
+          </span>
+        </div>
+      </div>
+    </header>
+
+    <!-- CONTENT WRAPPER -->
+    <main id="user-view" class="flex-1 px-4 pt-4 pb-12 flex flex-col gap-6">
+
+      <!-- SYSTEM AUTO INFO CARD -->
+      <section class="glass-effect rounded-2xl p-4.5 flex flex-col gap-3 transition-colors duration-300">
+        <div class="flex items-center justify-between border-b border-ios-border-white-5 pb-2.5">
+          <span class="text-xs font-medium text-ios-text-secondary uppercase tracking-wider">系統自動記錄區</span>
+          <span id="case-id" class="text-xs font-mono text-cyan-505 font-semibold bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20">#RPT-20260616-XXXX</span>
+        </div>
+        
+        <div class="grid grid-cols-2 gap-3">
+          <!-- Time info -->
+          <div class="flex flex-col gap-1 bg-ios-inner-card p-2.5 rounded-xl border border-ios-border-white-5">
+            <span class="text-[10px] text-ios-text-secondary flex items-center gap-1">
+              <i class="fa-regular fa-clock text-cyan-500"></i> 當前系統時間
+            </span>
+            <span id="live-time" class="text-xs font-mono font-medium text-ios-text-primary">2026-06-16 12:40:11</span>
+          </div>
+
+          <!-- Browser/OS info -->
+          <div class="flex flex-col gap-1 bg-ios-inner-card p-2.5 rounded-xl border border-ios-border-white-5">
+            <span class="text-[10px] text-ios-text-secondary flex items-center gap-1">
+              <i class="fa-solid fa-mobile-screen-button text-purple-400"></i> 回報設備資訊
+            </span>
+            <span id="device-info" class="text-xs font-medium text-ios-text-primary truncate flex items-center gap-1">
+              <i class="fa-brands fa-chrome text-ios-text-muted"></i> Chrome / Windows
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION A: LOCATION -->
+      <section id="card-location" class="glass-effect rounded-2xl p-4.5 flex flex-col gap-4 transition-all duration-300">
+        <div class="flex items-center justify-between">
+          <h2 class="font-semibold text-ios-text-primary flex items-center gap-2">
+            <i class="fa-solid fa-location-crosshairs text-cyan-500"></i>
+            1. 標記案件位置 <span class="text-red-400 text-sm">*</span>
+          </h2>
+          <span id="badge-location-status" class="text-[10px] bg-red-500/10 border border-red-500/20 text-red-400 px-2 py-0.5 rounded-full flex items-center gap-1">
+            <span class="h-1.5 w-1.5 rounded-full bg-red-400"></span> 尚未定位
+          </span>
+        </div>
+
+        <!-- Location Control Buttons -->
+        <div class="grid grid-cols-2 gap-2.5">
+          <button id="btn-locate" onclick="triggerGeolocation()" class="flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 active:scale-95 text-white font-medium text-xs py-3 px-3 rounded-xl transition-all duration-200 cursor-pointer shadow-lg shadow-cyan-950/20">
+            <i class="fa-solid fa-location-arrow animate-bounce-subtle"></i>
+            <span>自動定位當前位置</span>
+          </button>
+          <button onclick="openQRModal()" class="flex items-center justify-center gap-2 bg-ios-inner-card hover:bg-ios-bg-container active:scale-95 text-ios-text-primary font-medium text-xs py-3 px-3 rounded-xl transition-all duration-200 cursor-pointer">
+            <i class="fa-solid fa-qrcode text-purple-400"></i>
+            <span>掃描設備 QR Code</span>
+          </button>
+        </div>
+
+        <!-- Leaflet Map Container -->
+        <div class="relative w-full rounded-xl overflow-hidden border border-ios-border shadow-inner">
+          <div id="leaflet-map" class="w-full h-[30vh] z-10 bg-ios-inner-card"></div>
+          
+          <!-- Coordinates Overlay Badge -->
+          <div class="absolute bottom-2.5 left-2.5 z-20 bg-ios-bg-container/90 backdrop-blur-md px-2.5 py-1 rounded-lg border border-ios-border-white-5 text-[10px] font-mono text-ios-text-secondary">
+            座標: <span id="display-coords" class="text-cyan-500 font-bold">22.998600, 120.218500</span>
+          </div>
+        </div>
+
+        <!-- Fallback dropdowns -->
+        <div class="bg-ios-inner-card p-3.5 rounded-xl border border-ios-border-white-5 flex flex-col gap-3">
+          <div class="flex items-center gap-2 text-xs text-ios-text-secondary">
+            <i class="fa-solid fa-circle-info text-ios-text-muted"></i>
+            <span>備用方案：若定位不準或失敗，請手動選擇空間：</span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2.5">
+            <!-- Campus Select -->
+            <div class="flex flex-col gap-1">
+              <label class="text-[10px] text-ios-text-secondary font-medium">校區</label>
+              <div class="relative">
+                <select id="select-campus" onchange="handleCampusChange()" class="w-full text-xs glass-input py-2.5 pl-3 pr-8 rounded-lg appearance-none cursor-pointer">
+                  <option value="" disabled selected>請選擇校區</option>
+                  <option value="光復校區">光復校區</option>
+                  <option value="成功校區">成功校區</option>
+                  <option value="自強校區">自強校區</option>
+                  <option value="力行校區">力行校區</option>
+                  <option value="敬業校區">敬業校區</option>
+                </select>
+                <i class="fa-solid fa-chevron-down absolute right-3 top-3.5 text-[10px] text-ios-text-muted pointer-events-none"></i>
+              </div>
+            </div>
+
+            <!-- Building Select -->
+            <div class="flex flex-col gap-1">
+              <label class="text-[10px] text-ios-text-secondary font-medium">建築 / 開放空間</label>
+              <div class="relative">
+                <select id="select-building" onchange="handleBuildingChange()" class="w-full text-xs glass-input py-2.5 pl-3 pr-8 rounded-lg appearance-none cursor-pointer" disabled>
+                  <option value="" disabled selected>請先選擇校區</option>
+                </select>
+                <i class="fa-solid fa-chevron-down absolute right-3 top-3.5 text-[10px] text-ios-text-muted pointer-events-none"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION C: MEDIA UPLOAD -->
+      <section id="card-media" class="glass-effect rounded-2xl p-4.5 flex flex-col gap-4">
+        <h2 class="font-semibold text-ios-text-primary flex items-center gap-2">
+          <i class="fa-solid fa-camera text-purple-400"></i>
+          2. 影像上傳 (Media) <span class="text-red-400 text-sm">*</span>
+        </h2>
+
+        <!-- Image Upload Dashed Zone -->
+        <div id="drop-zone" onclick="triggerImageUpload()" class="border-2 border-dashed border-ios-border hover:border-cyan-500/80 bg-ios-inner-card active:bg-ios-bg-container rounded-xl p-6 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all duration-300">
+          <i class="fa-solid fa-cloud-arrow-up text-3xl text-ios-text-muted transition-colors group-hover:text-cyan-500" id="upload-icon"></i>
+          <p class="text-xs font-medium text-ios-text-primary text-center">拍攝或上傳現場照片</p>
+          <p class="text-[10px] text-ios-text-muted text-center">支援多張照片模擬 (1-5張)</p>
+          
+          <input type="file" id="image-input" accept="image/*" multiple class="hidden" onchange="handleImageFileSelect(event)">
+        </div>
+
+        <!-- Custom Upload Trigger for Demo (Adding beautiful mockup images easily) -->
+        <div class="flex justify-center -mt-2">
+          <button type="button" onclick="addMockImage()" class="text-[10px] text-cyan-500 hover:underline flex items-center gap-1.5 bg-cyan-500/10 px-3 py-1.5 rounded-full cursor-pointer">
+            <i class="fa-solid fa-wand-magic-sparkles text-cyan-500"></i> 模擬產生精美校園問題照片
+          </button>
+        </div>
+
+        <!-- Thumbnails Horizontal Scroller -->
+        <div id="thumbnail-container" class="hidden flex-col gap-2 border-t border-ios-border pt-3">
+          <div class="flex justify-between items-center text-[10px] text-ios-text-secondary">
+            <span>已上傳照片組</span>
+            <span id="image-count">0 / 5 張</span>
+          </div>
+          <div id="thumbnails-list" class="flex gap-3 overflow-x-auto py-1">
+            <!-- Thumbnails inserted dynamically -->
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION B: ISSUE DETAILS -->
+      <section id="card-details" class="glass-effect rounded-2xl p-4.5 flex flex-col gap-5 transition-all duration-300">
+        <div class="flex flex-col gap-1">
+          <h2 class="font-semibold text-ios-text-primary flex items-center gap-2">
+            <i class="fa-solid fa-clipboard-list text-pink-400"></i>
+            3. 問題內容資料 <span class="text-red-400 text-sm">*</span>
+          </h2>
+          <p class="text-[10px] text-ios-text-secondary">請選取適當的類別，並簡短描述以加速行政處置</p>
+        </div>
+
+        <!-- Issue Type Chips (Large single selection buttons) -->
+        <div class="flex flex-col gap-2">
+          <label class="text-xs font-semibold text-ios-text-primary">問題類型</label>
+          <div class="grid grid-cols-2 gap-2" id="chips-container">
+            <!-- Chip 1 -->
+            <button type="button" data-chip="flood" onclick="selectChip('flood')" class="group flex items-center gap-3 bg-ios-inner-card hover:bg-ios-inner-card/85 active:scale-97 p-3 rounded-xl transition-all duration-200 text-left cursor-pointer">
+              <span class="icon-span flex items-center justify-center w-8 h-8 rounded-lg bg-blue-500/10 text-blue-500 dark:text-blue-400 group-hover:bg-blue-500/20">
+                <i class="fa-solid fa-cloud-showers-heavy text-sm"></i>
+              </span>
+              <span class="text-span text-xs font-semibold text-ios-text-secondary">積水/淹水</span>
+            </button>
+            <!-- Chip 2 -->
+            <button type="button" data-chip="road" onclick="selectChip('road')" class="group flex items-center gap-3 bg-ios-inner-card hover:bg-ios-inner-card/85 active:scale-97 p-3 rounded-xl transition-all duration-200 text-left cursor-pointer">
+              <span class="icon-span flex items-center justify-center w-8 h-8 rounded-lg bg-orange-500/10 text-orange-600 dark:text-orange-400 group-hover:bg-orange-500/20">
+                <i class="fa-solid fa-road-barrier text-sm"></i>
+              </span>
+              <span class="text-span text-xs font-semibold text-ios-text-secondary">路面破損</span>
+            </button>
+            <!-- Chip 3 -->
+            <button type="button" data-chip="parking" onclick="selectChip('parking')" class="group flex items-center gap-3 bg-ios-inner-card hover:bg-ios-inner-card/85 active:scale-97 p-3 rounded-xl transition-all duration-200 text-left cursor-pointer">
+              <span class="icon-span flex items-center justify-center w-8 h-8 rounded-lg bg-red-500/10 text-red-500 dark:text-red-400 group-hover:bg-red-500/20">
+                <i class="fa-solid fa-square-parking text-sm"></i>
+              </span>
+              <span class="text-span text-xs font-semibold text-ios-text-secondary">違規停車</span>
+            </button>
+            <!-- Chip 4 -->
+            <button type="button" data-chip="facility" onclick="selectChip('facility')" class="group flex items-center gap-3 bg-ios-inner-card hover:bg-ios-inner-card/85 active:scale-97 p-3 rounded-xl transition-all duration-200 text-left cursor-pointer">
+              <span class="icon-span flex items-center justify-center w-8 h-8 rounded-lg bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 group-hover:bg-yellow-500/20">
+                <i class="fa-solid fa-screwdriver-wrench text-sm"></i>
+              </span>
+              <span class="text-span text-xs font-semibold text-ios-text-secondary">設施損壞</span>
+            </button>
+            <!-- Chip 5 -->
+            <button type="button" data-chip="waste" onclick="selectChip('waste')" class="group flex items-center gap-3 bg-ios-inner-card hover:bg-ios-inner-card/85 active:scale-97 p-3 rounded-xl transition-all duration-200 text-left cursor-pointer col-span-2">
+              <span class="icon-span flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 group-hover:bg-emerald-500/20">
+                <i class="fa-solid fa-trash-can text-sm"></i>
+              </span>
+              <span class="text-span text-xs font-semibold text-ios-text-secondary">環境髒亂</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Apple Switch: Severity -->
+        <div class="flex items-center justify-between bg-ios-inner-card border border-ios-border-white-5 rounded-xl p-3.5">
+          <div class="flex flex-col gap-0.5">
+            <span class="text-xs font-semibold text-ios-text-primary flex items-center gap-1.5">
+              <i class="fa-solid fa-triangle-exclamation text-amber-500 animate-pulse"></i> 嚴重影響通行或安全疑慮
+            </span>
+            <span class="text-[9px] text-ios-text-secondary">開啟後將標記為加急案件，通知相關科室即刻處置</span>
+          </div>
+          
+          <!-- iOS style toggle -->
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="toggle-severity" onchange="handleSeverityToggle(this)" class="sr-only peer">
+            <div class="w-11 h-6 bg-ios-inner-card rounded-full border border-ios-border peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-350 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-500"></div>
+          </label>
+        </div>
+
+        <!-- Issue Description Textarea -->
+        <div class="flex flex-col gap-1.5">
+          <label class="text-xs font-semibold text-ios-text-primary flex justify-between">
+            <span>問題簡短描述 (選填)</span>
+            <span id="char-count" class="text-[10px] text-ios-text-muted font-mono">0 / 200 字</span>
+          </label>
+          <div class="relative">
+            <textarea id="issue-description" oninput="handleDescriptionInput(this)" maxlength="200" rows="3" placeholder="請描述損壞範圍、具體指標或狀況，例如：路面有約 10 公分深的坑洞，機車經過容易打滑..." class="w-full text-xs glass-input p-3 rounded-xl resize-none"></textarea>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION: USER IDENTITY -->
+      <section class="glass-effect rounded-2xl p-4.5 flex flex-col gap-4">
+        <h2 class="font-semibold text-ios-text-primary flex items-center gap-2">
+          <i class="fa-solid fa-user-shield text-emerald-400"></i>
+          4. 通報身分設定
+        </h2>
+
+        <!-- Apple Switch: Anonymous -->
+        <div class="flex items-center justify-between">
+          <div class="flex flex-col gap-0.5">
+            <span class="text-xs font-semibold text-ios-text-primary">隱藏我的身份 (匿名回報)</span>
+            <span class="text-[9px] text-ios-text-secondary">預設為隱藏，系統僅儲存案件地理位置</span>
+          </div>
+          
+          <!-- iOS style toggle (default checked) -->
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="toggle-anonymous" onchange="handleAnonymousToggle(this)" checked class="sr-only peer">
+            <div class="w-11 h-6 bg-ios-inner-card rounded-full border border-ios-border peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-350 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+          </label>
+        </div>
+
+        <!-- Expandable Email input field -->
+        <div id="email-field-container" class="hidden overflow-hidden transition-all duration-300 max-h-0 opacity-0">
+          <div class="flex flex-col gap-1.5 border-t border-ios-border pt-3 mt-1">
+            <label class="text-xs font-semibold text-ios-text-primary">聯絡 Email</label>
+            <input type="email" id="user-email" placeholder="example@ncku.edu.tw" class="w-full text-xs glass-input px-3 py-2.5 rounded-xl">
+            <span class="text-[9px] text-ios-text-secondary">留下郵箱，當修繕完畢時系統將主動以信件通知您。</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Bottom Spacer to prevent fixed footer coverage -->
+      <div class="h-12"></div>
+    </main>
+
+    <!-- ADMIN VIEW -->
+    <main id="admin-view" class="hidden flex-1 px-4 pt-4 pb-12 flex flex-col gap-6">
+      <div class="flex items-center justify-between border-b border-ios-border-white-5 pb-3">
+        <div class="flex flex-col">
+          <h2 class="text-lg font-bold text-ios-text-primary flex items-center gap-2">
+            <i class="fa-solid fa-chart-line text-rose-500 animate-pulse"></i>
+            回報案件觀測台
+          </h2>
+          <p class="text-[10px] text-ios-text-secondary">即時追蹤與管理所有校園公民回報案件</p>
+        </div>
+        <button onclick="logoutAdmin()" class="text-xs text-rose-500 bg-rose-500/10 hover:bg-rose-500/20 px-2.5 py-1.5 rounded-full cursor-pointer flex items-center gap-1 active:scale-95 transition-all duration-200">
+          <i class="fa-solid fa-arrow-left"></i> 返回回報
+        </button>
+      </div>
+
+      <!-- Stats Overview -->
+      <div class="grid grid-cols-3 gap-2.5">
+        <div class="flex flex-col gap-0.5 bg-ios-inner-card p-3 rounded-xl border border-ios-border-white-5 text-center transition-all duration-300">
+          <span class="text-[9px] text-ios-text-secondary">總案件數</span>
+          <span id="stat-total" class="text-xl font-bold font-mono text-ios-text-primary">0</span>
+        </div>
+        <div class="flex flex-col gap-0.5 bg-ios-inner-card p-3 rounded-xl border border-ios-border-white-5 text-center transition-all duration-300">
+          <span class="text-[9px] text-ios-text-secondary">待處理</span>
+          <span id="stat-pending" class="text-xl font-bold font-mono text-amber-500">0</span>
+        </div>
+        <div class="flex flex-col gap-0.5 bg-ios-inner-card p-3 rounded-xl border border-ios-border-white-5 text-center transition-all duration-300">
+          <span class="text-[9px] text-ios-text-secondary">已解決</span>
+          <span id="stat-resolved" class="text-xl font-bold font-mono text-emerald-500">0</span>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div class="flex flex-col gap-2 bg-ios-inner-card/40 p-3 rounded-2xl border border-ios-border-white-5 transition-colors duration-300">
+        <label class="text-[10px] text-ios-text-secondary font-medium">篩選案件狀態</label>
+        <div class="flex gap-1.5 overflow-x-auto pb-1" id="admin-filters">
+          <button onclick="setAdminFilter('all')" data-filter="all" class="text-xs font-semibold px-3 py-1.5 rounded-full bg-cyan-500 text-white cursor-pointer active:scale-95 transition-all">全部</button>
+          <button onclick="setAdminFilter('pending')" data-filter="pending" class="text-xs font-semibold px-3 py-1.5 rounded-full bg-ios-inner-card text-ios-text-secondary hover:text-ios-text-primary cursor-pointer active:scale-95 transition-all">待處理</button>
+          <button onclick="setAdminFilter('in_progress')" data-filter="in_progress" class="text-xs font-semibold px-3 py-1.5 rounded-full bg-ios-inner-card text-ios-text-secondary hover:text-ios-text-primary cursor-pointer active:scale-95 transition-all">處理中</button>
+          <button onclick="setAdminFilter('resolved')" data-filter="resolved" class="text-xs font-semibold px-3 py-1.5 rounded-full bg-ios-inner-card text-ios-text-secondary hover:text-ios-text-primary cursor-pointer active:scale-95 transition-all">已解決</button>
+        </div>
+      </div>
+
+      <!-- List Container -->
+      <div id="admin-reports-list" class="flex flex-col gap-4">
+        <!-- Rendered dynamically -->
+      </div>
+    </main>
+ 
+    <!-- FIXED BOTTOM SUBMISSION BAR -->
+    <footer id="user-footer" class="fixed bottom-0 left-0 right-0 z-40 max-w-md mx-auto px-4 py-3 bg-ios-bg-container/90 backdrop-blur-xl border-t border-ios-border flex flex-col items-center">
+      <button id="btn-submit" disabled onclick="submitReport()" class="w-full flex items-center justify-center gap-2 bg-ios-inner-card text-ios-text-muted cursor-not-allowed font-semibold text-sm py-3 px-4 rounded-xl transition-all duration-300 active:scale-[0.98] safe-bottom-margin">
+        <i class="fa-solid fa-paper-plane"></i>
+        <span>填寫必填欄位 (地圖定位與問題類型)</span>
+      </button>
+    </footer>
+
+  </div>
+
+  <!-- QR CODE SCANNER MODAL (MOCKUP) -->
+  <div id="qr-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-ios-bg-container/95 backdrop-blur-md hidden transition-all duration-300">
+    <div class="w-full max-w-xs mx-auto glass-effect rounded-2xl p-6 flex flex-col items-center gap-5 border border-ios-border relative">
+      <button onclick="closeQRModal()" class="absolute top-3 right-3 text-ios-text-secondary hover:text-ios-text-primary p-1 cursor-pointer">
+        <i class="fa-solid fa-xmark text-lg"></i>
+      </button>
+
+      <div class="text-center">
+        <h3 class="font-bold text-ios-text-primary flex items-center justify-center gap-2">
+          <i class="fa-solid fa-camera text-purple-400"></i> 掃描校園設備 QR Code
+        </h3>
+        <p class="text-[10px] text-ios-text-secondary mt-1">請將相機對準路燈、變電箱或公用設施貼條</p>
+      </div>
+
+      <!-- Scanning Viewfinder Mockup -->
+      <div class="w-48 h-48 border-2 border-cyan-500/50 rounded-xl relative overflow-hidden bg-ios-inner-card shadow-inner flex items-center justify-center">
+        <!-- Laser Scanner Line -->
+        <div class="absolute w-full h-[2px] bg-gradient-to-r from-transparent via-cyan-500 to-transparent scan-laser z-20"></div>
+        
+        <!-- Viewfinder brackets -->
+        <div class="absolute top-2.5 left-2.5 w-4.5 h-4.5 border-t-2 border-l-2 border-cyan-500 rounded-tl"></div>
+        <div class="absolute top-2.5 right-2.5 w-4.5 h-4.5 border-t-2 border-r-2 border-cyan-500 rounded-tr"></div>
+        <div class="absolute bottom-2.5 left-2.5 w-4.5 h-4.5 border-b-2 border-l-2 border-cyan-500 rounded-bl"></div>
+        <div class="absolute bottom-2.5 right-2.5 w-4.5 h-4.5 border-b-2 border-r-2 border-cyan-500 rounded-br"></div>
+        
+        <!-- Center icon -->
+        <i class="fa-solid fa-qrcode text-5xl text-ios-text-muted animate-pulse"></i>
+      </div>
+
+      <!-- Trigger Action Button -->
+      <button onclick="simulateQRScan()" class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 active:scale-95 text-white font-medium text-xs transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5">
+        <i class="fa-solid fa-wand-magic-sparkles"></i> 模擬掃描：成大光復校區-成功湖
+      </button>
+    </div>
+  </div>
+
+  <!-- ADMIN LOGIN MODAL -->
+  <div id="login-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-ios-bg-container/95 backdrop-blur-md hidden transition-all duration-300">
+    <div class="w-full max-w-xs mx-auto glass-effect rounded-2xl p-6 flex flex-col items-center gap-5 border border-ios-border relative">
+      <button onclick="closeLoginModal()" class="absolute top-3 right-3 text-ios-text-secondary hover:text-ios-text-primary p-1 cursor-pointer">
+        <i class="fa-solid fa-xmark text-lg"></i>
+      </button>
+
+      <div class="text-center">
+        <h3 class="font-bold text-ios-text-primary flex items-center justify-center gap-2">
+          <i class="fa-solid fa-user-shield text-cyan-500"></i> 管理員登入
+        </h3>
+        <p class="text-[10px] text-ios-text-secondary mt-1">請輸入管理帳號與密碼以進入回報觀測台</p>
+      </div>
+
+      <form id="admin-login-form" onsubmit="handleLoginSubmit(event)" class="w-full flex flex-col gap-4">
+        <div class="flex flex-col gap-1">
+          <label class="text-[10px] text-ios-text-secondary font-medium">帳號</label>
+          <input type="text" id="login-username" required placeholder="admin" class="w-full text-xs glass-input px-3 py-2.5 rounded-xl">
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-[10px] text-ios-text-secondary font-medium">密碼</label>
+          <input type="password" id="login-password" required placeholder="admin" class="w-full text-xs glass-input px-3 py-2.5 rounded-xl">
+        </div>
+        <button type="submit" class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 active:scale-95 text-white font-medium text-xs transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 shadow-lg shadow-indigo-950/20">
+          <i class="fa-solid fa-right-to-bracket"></i> 登入系統
+        </button>
+      </form>
+      
+      <div class="text-center -mt-2">
+        <span class="text-[9px] text-ios-text-muted bg-ios-inner-card px-2.5 py-1.5 rounded-md border border-ios-border-white-5">測試帳密均為: <strong class="text-cyan-500 font-bold">admin</strong></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHOTO LIGHTBOX MODAL -->
+  <div id="photo-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/95 hidden transition-all duration-300" onclick="closePhotoModal()">
+    <div class="relative max-w-sm max-h-[85vh] px-4" onclick="event.stopPropagation()">
+      <img id="lightbox-img" class="max-w-full max-h-[85vh] rounded-lg shadow-2xl object-contain">
+      <button onclick="closePhotoModal()" class="absolute top-3 right-6 text-white bg-black/40 hover:bg-black/60 w-8 h-8 rounded-full flex items-center justify-center cursor-pointer">
+        <i class="fa-solid fa-xmark text-lg"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- SUCCESS MODAL -->
+  <div id="success-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-ios-bg-container/95 backdrop-blur-xl hidden transition-all duration-300">
+    <div class="w-full max-w-sm mx-auto p-6 flex flex-col items-center text-center gap-6">
+      
+      <!-- Checkmark Animation -->
+      <div class="relative">
+        <svg class="checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
+          <circle class="checkmark__circle" cx="26" cy="26" r="25" fill="none"/>
+          <path class="checkmark__check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+        </svg>
+      </div>
+
+      <!-- Header & Message -->
+      <div class="flex flex-col gap-2">
+        <h3 class="text-2xl font-bold bg-gradient-to-r from-emerald-500 to-cyan-500 bg-clip-text text-transparent">感謝通報！</h3>
+        <p class="text-sm text-ios-text-primary">系統已自動標記座標與時間並上傳雲端</p>
+      </div>
+
+      <!-- Stats Box -->
+      <div class="w-full bg-ios-inner-card rounded-2xl border border-ios-border-white-5 p-4.5 flex flex-col gap-3">
+        <div class="flex justify-between items-center text-xs border-b border-ios-border-white-5 pb-2">
+          <span class="text-ios-text-secondary">通報案件編號:</span>
+          <span id="success-case-id" class="font-mono text-cyan-500 font-bold bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20">#RPT-20260616-1234</span>
+        </div>
+        <div class="flex justify-between items-center text-xs">
+          <span class="text-ios-text-secondary">公民回饋獎勵:</span>
+          <span class="text-emerald-500 font-bold flex items-center gap-1.5">
+            <i class="fa-solid fa-coins animate-bounce text-yellow-500"></i> +10 點校園公民積分
+          </span>
+        </div>
+      </div>
+
+      <!-- Encouragement text -->
+      <p class="text-[11px] text-ios-text-secondary px-4">
+        您的愛校心聲已成功傳達至總務處！您可以於「校園公共事務平台」查詢即時處置進度。
+      </p>
+
+      <!-- Return Button -->
+      <button onclick="resetAppAndCloseModal()" class="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 active:scale-98 text-white font-bold text-sm transition-all duration-200 cursor-pointer shadow-lg shadow-indigo-950/40">
+        返回首頁，繼續回報
+      </button>
+    </div>
+  </div>
+
+  <!-- Custom Toast Element -->
+  <div id="toast" class="fixed top-24 left-1/2 -translate-x-1/2 z-50 bg-ios-bg-container/95 backdrop-blur-md border border-ios-border text-xs text-ios-text-primary px-4 py-2.5 rounded-full shadow-2xl flex items-center gap-2 opacity-0 scale-95 pointer-events-none transition-all duration-300">
+    <i id="toast-icon" class="fa-solid fa-circle-info text-cyan-500"></i>
+    <span id="toast-message">這裡顯示訊息</span>
+  </div>
+
+  <!-- JAVASCRIPT LOGIC -->
+  <script>
+    // State Variables
+    let map = null;
+    let mainMarker = null;
+    let selectedCategory = null;
+    let currentCoords = [22.9986, 120.2185]; // Default: NCKU
+    let hasLocation = false;
+    let uploadedImages = []; // Array of { id, src }
+    let generatedCaseId = '';
+    let activeTileLayer = null;
+    let currentAdminFilter = 'all';
+
+    // Mock Campus Images list categorized by issue
+    const mockImagesByCategory = {
+      flood: [
+        'https://images.unsplash.com/photo-1486911278844-a81c5267e227?w=600&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?w=600&auto=format&fit=crop&q=80'
+      ],
+      road: [
+        'https://images.unsplash.com/photo-1515162305285-0293e4767cc2?w=600&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1576086213369-97a306d36557?w=600&auto=format&fit=crop&q=80'
+      ],
+      parking: [
+        'https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=600&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?w=600&auto=format&fit=crop&q=80'
+      ],
+      facility: [
+        'https://images.unsplash.com/photo-1584824486509-112e4181ff6b?w=600&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1595206133361-b1fe343e5e23?w=600&auto=format&fit=crop&q=80'
+      ],
+      waste: [
+        'https://images.unsplash.com/photo-1611284446314-60a58ac0deb9?w=600&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1530587191325-3db32d826c18?w=600&auto=format&fit=crop&q=80'
+      ],
+      default: [
+        'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=600&auto=format&fit=crop&q=80'
+      ]
+    };
+
+    // Building options map with preset coordinates
+    const campusBuildings = {
+      "光復校區": [
+        { name: "成功湖", coords: [22.9972, 120.2183] },
+        { name: "榕園", coords: [22.9982, 120.2188] },
+        { name: "雲平大樓", coords: [22.9975, 120.2173] },
+        { name: "學生第一活動中心", coords: [22.9978, 120.2163] }
+      ],
+      "成功校區": [
+        { name: "總圖書館", coords: [23.0001, 120.2178] },
+        { name: "成功講堂", coords: [22.9995, 120.2168] },
+        { name: "物理系館", coords: [22.9998, 120.2187] },
+        { name: "博物館", coords: [22.9990, 120.2163] }
+      ],
+      "自強校區": [
+        { name: "照坤儀器設備大樓", coords: [23.0006, 120.2223] },
+        { name: "電機系館", coords: [23.0000, 120.2220] },
+        { name: "化工系館", coords: [23.0007, 120.2210] }
+      ],
+      "力行校區": [
+        { name: "社會科學院", coords: [22.9990, 120.2125] },
+        { name: "奇美樓", coords: [22.9982, 120.2120] }
+      ],
+      "敬業校區": [
+        { name: "醫學系館", coords: [23.0025, 120.2195] },
+        { name: "學生宿舍", coords: [23.0032, 120.2198] }
+      ]
+    };
+
+    // Initialization
+    window.addEventListener('DOMContentLoaded', () => {
+      // 0. Initial Theme Setup
+      const savedTheme = localStorage.getItem('theme') || 'dark';
+      const isDark = savedTheme === 'dark';
+      document.documentElement.classList.toggle('dark', isDark);
+
+      // 1. Generate Case ID
+      generateCaseCode();
+
+      // 2. Start Live Time Clock
+      startLiveClock();
+
+      // 3. Detect User Device/Browser
+      detectUserAgent();
+
+      // 4. Initialize Map
+      initLeafletMap();
+      
+      // Update Theme UI icons and maps
+      updateThemeUI(isDark);
+      
+      // 5. Run form validation initial check
+      validateForm();
+
+      // 6. Pre-populate mock reports
+      initReports();
+    });
+
+    // Generate case code
+    function generateCaseCode() {
+      const today = new Date();
+      const dateStr = today.getFullYear() + 
+                      String(today.getMonth() + 1).padStart(2, '0') + 
+                      String(today.getDate()).padStart(2, '0');
+      const randomId = Math.floor(1000 + Math.random() * 9000);
+      generatedCaseId = `#RPT-${dateStr}-${randomId}`;
+      document.getElementById('case-id').innerText = generatedCaseId;
+    }
+
+    // Live Clock
+    function startLiveClock() {
+      const liveTimeEl = document.getElementById('live-time');
+      setInterval(() => {
+        const now = new Date();
+        const dateStr = now.getFullYear() + '-' +
+                        String(now.getMonth() + 1).padStart(2, '0') + '-' +
+                        String(now.getDate()).padStart(2, '0');
+        const timeStr = String(now.getHours()).padStart(2, '0') + ':' +
+                        String(now.getMinutes()).padStart(2, '0') + ':' +
+                        String(now.getSeconds()).padStart(2, '0');
+        liveTimeEl.innerText = `${dateStr} ${timeStr}`;
+      }, 1000);
+    }
+
+    // Parse Device / Browser Info
+    function detectUserAgent() {
+      const ua = navigator.userAgent;
+      let os = "未知系統";
+      let browser = "未知瀏覽器";
+      let osIcon = "fa-square-question";
+      let browserIcon = "fa-globe";
+
+      // OS check
+      if (/windows/i.test(ua)) { os = "Windows"; osIcon = "fa-brands fa-windows"; }
+      else if (/macintosh|mac os x/i.test(ua) && !('ontouchend' in document)) { os = "macOS"; osIcon = "fa-brands fa-apple"; }
+      else if (/iphone|ipad|ipod/i.test(ua)) { os = "iOS"; osIcon = "fa-brands fa-apple"; }
+      else if (/android/i.test(ua)) { os = "Android"; osIcon = "fa-brands fa-android"; }
+      else if (/linux/i.test(ua)) { os = "Linux"; osIcon = "fa-brands fa-linux"; }
+
+      // Browser check
+      if (/edg/i.test(ua)) { browser = "Edge"; browserIcon = "fa-brands fa-edge"; }
+      else if (/chrome/i.test(ua) && !/chromium/i.test(ua)) { browser = "Chrome"; browserIcon = "fa-brands fa-chrome"; }
+      else if (/safari/i.test(ua) && !/chrome/i.test(ua)) { browser = "Safari"; browserIcon = "fa-brands fa-safari"; }
+      else if (/firefox/i.test(ua)) { browser = "Firefox"; browserIcon = "fa-brands fa-firefox"; }
+      else if (/opera|opr/i.test(ua)) { browser = "Opera"; browserIcon = "fa-brands fa-opera"; }
+
+      const devInfoEl = document.getElementById('device-info');
+      devInfoEl.innerHTML = `<i class="${osIcon} text-slate-400"></i> ${os} / <i class="${browserIcon} text-slate-400"></i> ${browser}`;
+    }
+
+    // Initialize Map
+    function initLeafletMap() {
+      // Create Leaflet map centered at NCKU
+      map = L.map('leaflet-map', {
+        zoomControl: false,
+        attributionControl: false
+      }).setView(currentCoords, 16);
+
+      // Add map tiles dynamically based on theme
+      const savedTheme = localStorage.getItem('theme') || 'dark';
+      setMapTheme(savedTheme === 'dark');
+
+      // Create Custom Neon Glowing Marker Icon
+      const neonPin = L.divIcon({
+        className: 'custom-div-icon',
+        html: `
+          <div class="relative flex items-center justify-center">
+            <span class="animate-ping absolute inline-flex h-8 w-8 rounded-full bg-cyan-400 opacity-60"></span>
+            <div class="h-6 w-6 rounded-full bg-slate-900 border-2 border-cyan-400 flex items-center justify-center shadow-lg">
+              <i class="fa-solid fa-crosshairs text-cyan-400 text-xs"></i>
+            </div>
+            <div class="absolute bottom-[-6px] w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-cyan-400"></div>
+          </div>`,
+        iconSize: [30, 42],
+        iconAnchor: [15, 42]
+      });
+
+      // Add main draggable marker to the map
+      mainMarker = L.marker(currentCoords, {
+        draggable: true,
+        icon: neonPin
+      }).addTo(map);
+
+      // Marker drag events
+      mainMarker.on('dragend', function(event) {
+        const marker = event.target;
+        const position = marker.getLatLng();
+        currentCoords = [position.lat, position.lng];
+        updateCoordinateDisplay(position.lat, position.lng);
+        setLocationAcquired(true);
+        showToast("📍 大頭針已拖曳更新位置！", "fa-location-dot");
+      });
+
+      // Map click event - move marker to click location
+      map.on('click', function(event) {
+        const clickCoords = event.latlng;
+        mainMarker.setLatLng(clickCoords);
+        currentCoords = [clickCoords.lat, clickCoords.lng];
+        updateCoordinateDisplay(clickCoords.lat, clickCoords.lng);
+        setLocationAcquired(true);
+        showToast("📍 已手動標記地圖位置！", "fa-map-pin");
+      });
+    }
+
+    // Theme Switch Logic
+    function toggleTheme() {
+      const isDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+      updateThemeUI(isDark);
+    }
+
+    function updateThemeUI(isDark) {
+      const themeIcon = document.getElementById('theme-icon');
+      if (!themeIcon) return;
+      if (isDark) {
+        themeIcon.className = 'fa-solid fa-moon';
+        setMapTheme(true);
+      } else {
+        themeIcon.className = 'fa-solid fa-sun text-amber-500';
+        setMapTheme(false);
+      }
+    }
+
+    function setMapTheme(isDark) {
+      if (!map) return;
+      if (activeTileLayer) {
+        map.removeLayer(activeTileLayer);
+      }
+      const url = isDark 
+        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+        : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+      activeTileLayer = L.tileLayer(url, { maxZoom: 20 }).addTo(map);
+    }
+
+    // Set Location Status Label State
+    function setLocationAcquired(acquired) {
+      hasLocation = acquired;
+      const statusEl = document.getElementById('badge-location-status');
+      if (acquired) {
+        statusEl.className = "text-[10px] bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 px-2 py-0.5 rounded-full flex items-center gap-1";
+        statusEl.innerHTML = `<span class="h-1.5 w-1.5 rounded-full bg-cyan-400 animate-pulse"></span> 已定位完成`;
+      } else {
+        statusEl.className = "text-[10px] bg-red-500/10 border border-red-500/20 text-red-400 px-2 py-0.5 rounded-full flex items-center gap-1";
+        statusEl.innerHTML = `<span class="h-1.5 w-1.5 rounded-full bg-red-400"></span> 尚未定位`;
+      }
+      validateForm();
+    }
+
+    // Update Coordinate display element text
+    function updateCoordinateDisplay(lat, lng) {
+      document.getElementById('display-coords').innerText = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+    }
+
+    // Trigger Browser Geolocation
+    function triggerGeolocation() {
+      const locateBtn = document.getElementById('btn-locate');
+      const originalHtml = locateBtn.innerHTML;
+      
+      locateBtn.disabled = true;
+      locateBtn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> 定位中...`;
+
+      if (!navigator.geolocation) {
+        showToast("您的瀏覽器不支援自動定位！", "fa-triangle-exclamation");
+        locateBtn.disabled = false;
+        locateBtn.innerHTML = originalHtml;
+        return;
+      }
+
+      const options = {
+        enableHighAccuracy: true,
+        timeout: 5000,
+        maximumAge: 0
+      };
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          currentCoords = [lat, lng];
+          
+          // Smooth pan map
+          map.setView(currentCoords, 18, { animate: true, duration: 1.0 });
+          mainMarker.setLatLng(currentCoords);
+          updateCoordinateDisplay(lat, lng);
+          setLocationAcquired(true);
+          showToast("定位成功！已獲取當前高精準座標。", "fa-circle-check");
+          
+          locateBtn.disabled = false;
+          locateBtn.innerHTML = originalHtml;
+        },
+        (error) => {
+          let errorMsg = "無法獲取定位權限！";
+          if (error.code === error.PERMISSION_DENIED) {
+            errorMsg = "使用者拒絕了定位權限申請。";
+          } else if (error.code === error.POSITION_UNAVAILABLE) {
+            errorMsg = "定位信號不穩定，找不到您的位置。";
+          } else if (error.code === error.TIMEOUT) {
+            errorMsg = "定位要求超時。";
+          }
+          showToast(errorMsg + "請手動拖曳地圖或選擇下拉選單。", "fa-triangle-exclamation");
+          
+          // Focus to default coords
+          map.setView(currentCoords, 16);
+          mainMarker.setLatLng(currentCoords);
+          updateCoordinateDisplay(currentCoords[0], currentCoords[1]);
+          // We don't mark as located yet, user has to drag pin or choose select menu
+          
+          locateBtn.disabled = false;
+          locateBtn.innerHTML = originalHtml;
+        },
+        options
+      );
+    }
+
+    // Campus selection select handler
+    function handleCampusChange() {
+      const campusSelect = document.getElementById('select-campus');
+      const buildingSelect = document.getElementById('select-building');
+      const selectedCampus = campusSelect.value;
+
+      buildingSelect.innerHTML = `<option value="" disabled selected>請選擇空間地點</option>`;
+      
+      if (selectedCampus && campusBuildings[selectedCampus]) {
+        campusBuildings[selectedCampus].forEach(building => {
+          const opt = document.createElement('option');
+          opt.value = building.name;
+          opt.innerText = building.name;
+          buildingSelect.appendChild(opt);
+        });
+        buildingSelect.disabled = false;
+      }
+    }
+
+    // Building selection change handler
+    function handleBuildingChange() {
+      const campusSelect = document.getElementById('select-campus');
+      const buildingSelect = document.getElementById('select-building');
+      const selectedCampus = campusSelect.value;
+      const selectedBuilding = buildingSelect.value;
+
+      if (selectedCampus && selectedBuilding && campusBuildings[selectedCampus]) {
+        const spaceObj = campusBuildings[selectedCampus].find(b => b.name === selectedBuilding);
+        if (spaceObj) {
+          currentCoords = spaceObj.coords;
+          map.setView(currentCoords, 17, { animate: true, duration: 0.8 });
+          mainMarker.setLatLng(currentCoords);
+          updateCoordinateDisplay(currentCoords[0], currentCoords[1]);
+          setLocationAcquired(true);
+          showToast(`已跳轉至: ${selectedCampus} - ${selectedBuilding}`, "fa-location-dot");
+        }
+      }
+    }
+
+    // Open/Close QR scanner modal
+    function openQRModal() {
+      document.getElementById('qr-modal').classList.remove('hidden');
+    }
+    function closeQRModal() {
+      document.getElementById('qr-modal').classList.add('hidden');
+    }
+
+    // Simulate QR Code scanning
+    function simulateQRScan() {
+      // Automatically set coordinates & options
+      const campusSelect = document.getElementById('select-campus');
+      campusSelect.value = "光復校區";
+      handleCampusChange();
+      
+      const buildingSelect = document.getElementById('select-building');
+      buildingSelect.value = "成功湖";
+      
+      currentCoords = [22.9972, 120.2183];
+      map.setView(currentCoords, 18, { animate: true, duration: 0.8 });
+      mainMarker.setLatLng(currentCoords);
+      updateCoordinateDisplay(currentCoords[0], currentCoords[1]);
+      setLocationAcquired(true);
+
+      closeQRModal();
+      showToast("📷 QR Code 掃描成功！已自動定位光復校區成功湖畔。", "fa-qrcode");
+    }
+
+    // Chip Styles Configurations
+    const chipStyles = {
+      flood: {
+        color: 'blue',
+        iconDefault: 'bg-blue-500/10 text-blue-500 dark:text-blue-400 group-hover:bg-blue-500/20',
+        iconActive: 'bg-white text-blue-500 dark:bg-blue-500 dark:text-white',
+        borderActive: 'bg-blue-500 text-white dark:bg-blue-950/30 dark:text-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.25)]',
+        textActive: 'text-white dark:text-blue-300',
+        textDefault: 'text-ios-text-secondary'
+      },
+      road: {
+        color: 'orange',
+        iconDefault: 'bg-orange-500/10 text-orange-600 dark:text-orange-400 group-hover:bg-orange-500/20',
+        iconActive: 'bg-white text-orange-500 dark:bg-orange-500 dark:text-white',
+        borderActive: 'bg-orange-500 text-white dark:bg-orange-950/30 dark:text-orange-400 shadow-[0_0_15px_rgba(249,115,22,0.25)]',
+        textActive: 'text-white dark:text-orange-300',
+        textDefault: 'text-ios-text-secondary'
+      },
+      parking: {
+        color: 'red',
+        iconDefault: 'bg-red-500/10 text-red-500 dark:text-red-400 group-hover:bg-red-500/20',
+        iconActive: 'bg-white text-red-500 dark:bg-red-500 dark:text-white',
+        borderActive: 'bg-red-500 text-white dark:bg-red-950/30 dark:text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.25)]',
+        textActive: 'text-white dark:text-red-300',
+        textDefault: 'text-ios-text-secondary'
+      },
+      facility: {
+        color: 'yellow',
+        iconDefault: 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 group-hover:bg-yellow-500/20',
+        iconActive: 'bg-white text-yellow-650 dark:bg-yellow-500 dark:text-white',
+        borderActive: 'bg-yellow-500 text-white dark:bg-yellow-950/30 dark:text-yellow-400 shadow-[0_0_15px_rgba(234,179,8,0.25)]',
+        textActive: 'text-white dark:text-yellow-300',
+        textDefault: 'text-ios-text-secondary'
+      },
+      waste: {
+        color: 'emerald',
+        iconDefault: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 group-hover:bg-emerald-500/20',
+        iconActive: 'bg-white text-emerald-650 dark:bg-emerald-500 dark:text-white',
+        borderActive: 'bg-emerald-500 text-white dark:bg-emerald-950/30 dark:text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.25)]',
+        textActive: 'text-white dark:text-emerald-300',
+        textDefault: 'text-ios-text-secondary'
+      }
+    };
+
+    // Choose category chip
+    function selectChip(category) {
+      selectedCategory = category;
+
+      Object.keys(chipStyles).forEach(cat => {
+        const chipBtn = document.querySelector(`[data-chip="${cat}"]`);
+        if (!chipBtn) return;
+        const style = chipStyles[cat];
+        const iconSpan = chipBtn.querySelector('.icon-span');
+        const textSpan = chipBtn.querySelector('.text-span');
+
+        if (cat === category) {
+          chipBtn.className = `group flex items-center gap-3 transition-all duration-200 p-3 rounded-xl text-left cursor-pointer ${style.borderActive}`;
+          iconSpan.className = `icon-span flex items-center justify-center w-8 h-8 rounded-lg text-sm transition-colors ${style.iconActive}`;
+          textSpan.className = `text-span text-xs font-semibold ${style.textActive}`;
+        } else {
+          chipBtn.className = `group flex items-center gap-3 bg-ios-inner-card hover:bg-ios-inner-card/85 active:scale-97 p-3 rounded-xl transition-all duration-200 text-left cursor-pointer`;
+          iconSpan.className = `icon-span flex items-center justify-center w-8 h-8 rounded-lg text-sm transition-colors ${style.iconDefault}`;
+          textSpan.className = `text-span text-xs font-semibold ${style.textDefault}`;
+        }
+      });
+
+      validateForm();
+    }
+
+    // Toggle Apple Severity Switch handler
+    function handleSeverityToggle(checkbox) {
+      const card = document.getElementById('card-details');
+      if (checkbox.checked) {
+        card.classList.add('severe-alert');
+        showToast("⚠️ 已標記為安全疑慮加急案件！", "fa-triangle-exclamation");
+      } else {
+        card.classList.remove('severe-alert');
+      }
+    }
+
+    // Textarea input char count
+    function handleDescriptionInput(textarea) {
+      const len = textarea.value.length;
+      document.getElementById('char-count').innerText = `${len} / 200 字`;
+    }
+
+    // Handle Image Upload triggers
+    function triggerImageUpload() {
+      document.getElementById('image-input').click();
+    }
+
+    // Real file selector handler
+    function handleImageFileSelect(event) {
+      const files = event.target.files;
+      if (files.length === 0) return;
+
+      const remainingSlots = 5 - uploadedImages.length;
+      const filesToProcess = Math.min(files.length, remainingSlots);
+
+      if (files.length > remainingSlots) {
+        showToast("照片數量上限為 5 張！已自動載入部分相片。", "fa-circle-exclamation");
+      }
+
+      for (let i = 0; i < filesToProcess; i++) {
+        const file = files[i];
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const imgId = Date.now() + Math.random().toString(36).substr(2, 5);
+          uploadedImages.push({
+            id: imgId,
+            src: e.target.result
+          });
+          renderThumbnails();
+          showToast("📸 相片成功載入預覽！", "fa-image");
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+
+    // Add Mock gorgeous photo matching current category selection
+    function addMockImage() {
+      if (uploadedImages.length >= 5) {
+        showToast("照片上傳數量已達 5 張上限！", "fa-circle-xmark");
+        return;
+      }
+
+      const category = selectedCategory || 'default';
+      const imgPool = mockImagesByCategory[category] || mockImagesByCategory['default'];
+      // Randomly select image from list
+      const randomSrc = imgPool[Math.floor(Math.random() * imgPool.length)];
+      
+      const imgId = Date.now() + Math.random().toString(36).substr(2, 5);
+      uploadedImages.push({
+        id: imgId,
+        src: randomSrc
+      });
+      renderThumbnails();
+      showToast("✨ 成功模擬載入校園回報照片！", "fa-sparkles");
+    }
+
+    // Remove previewed thumbnail
+    function deleteImage(id, event) {
+      event.stopPropagation(); // Stop trigger upload box clicks
+      uploadedImages = uploadedImages.filter(img => img.id !== id);
+      renderThumbnails();
+      showToast("🗑️ 照片已移除", "fa-trash-can");
+    }
+
+    // Render image list
+    function renderThumbnails() {
+      const container = document.getElementById('thumbnail-container');
+      const list = document.getElementById('thumbnails-list');
+      const countLabel = document.getElementById('image-count');
+
+      list.innerHTML = '';
+
+      if (uploadedImages.length === 0) {
+        container.classList.add('hidden');
+        return;
+      }
+
+      container.classList.remove('hidden');
+      countLabel.innerText = `${uploadedImages.length} / 5 張`;
+
+      uploadedImages.forEach((img) => {
+        const item = document.createElement('div');
+        item.className = "relative w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden border border-white/10 group";
+        item.innerHTML = `
+          <img src="${img.src}" class="w-full h-full object-cover">
+          <button type="button" onclick="deleteImage('${img.id}', event)" class="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500/90 text-white flex items-center justify-center text-[10px] shadow hover:bg-red-600 transition-colors cursor-pointer">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        `;
+        list.appendChild(item);
+      });
+    }
+
+    // Toggle Anonymous Option handler
+    function handleAnonymousToggle(checkbox) {
+      const container = document.getElementById('email-field-container');
+      if (!checkbox.checked) {
+        // Show Email
+        container.classList.remove('hidden');
+        setTimeout(() => {
+          container.classList.remove('opacity-0', 'max-h-0');
+          container.classList.add('opacity-100', 'max-h-40');
+        }, 50);
+      } else {
+        // Hide Email
+        container.classList.remove('opacity-100', 'max-h-40');
+        container.classList.add('opacity-0', 'max-h-0');
+        setTimeout(() => {
+          container.classList.add('hidden');
+        }, 300);
+      }
+    }
+
+    // Show Custom Toast Warning
+    let toastTimeout = null;
+    function showToast(message, icon = "fa-circle-info") {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toast-message');
+      const toastIcon = document.getElementById('toast-icon');
+
+      // Clear current timer
+      if (toastTimeout) clearTimeout(toastTimeout);
+
+      toastIcon.className = `fa-solid ${icon} text-cyan-400`;
+      toastMsg.innerText = message;
+      
+      // Fade in
+      toast.classList.remove('opacity-0', 'scale-95', 'pointer-events-none');
+      toast.classList.add('opacity-100', 'scale-100');
+
+      // Stay for 3 seconds
+      toastTimeout = setTimeout(() => {
+        toast.classList.remove('opacity-100', 'scale-100');
+        toast.classList.add('opacity-0', 'scale-95', 'pointer-events-none');
+      }, 3000);
+    }
+
+    // Form validation checks
+    function validateForm() {
+      const submitBtn = document.getElementById('btn-submit');
+      
+      const isLocValid = hasLocation;
+      const isCategoryValid = selectedCategory !== null;
+
+      if (isLocValid && isCategoryValid) {
+        submitBtn.disabled = false;
+        submitBtn.className = "w-full flex items-center justify-center gap-2 bg-gradient-to-r from-violet-600 via-indigo-600 to-cyan-500 hover:from-violet-500 hover:to-cyan-400 active:scale-[0.98] text-white font-bold text-sm py-3 px-4 rounded-xl transition-all duration-300 cursor-pointer shadow-lg shadow-indigo-950/40 safe-bottom-margin";
+        submitBtn.innerHTML = `<i class="fa-solid fa-paper-plane animate-pulse"></i> <span>確認送出報告</span>`;
+      } else {
+        submitBtn.disabled = true;
+        submitBtn.className = "w-full flex items-center justify-center gap-2 bg-ios-inner-card text-ios-text-muted cursor-not-allowed font-semibold text-sm py-3 px-4 rounded-xl transition-all duration-300 safe-bottom-margin";
+        
+        let missing = [];
+        if (!isLocValid) missing.push("定位");
+        if (!isCategoryValid) missing.push("問題類型");
+        
+        submitBtn.innerHTML = `<i class="fa-solid fa-lock"></i> <span>請填寫必填欄位 (尚缺: ${missing.join('、')})</span>`;
+      }
+    }
+
+    // Initialize reports database in localStorage
+    function initReports() {
+      const stored = localStorage.getItem('reports');
+      if (stored) {
+        try {
+          return JSON.parse(stored);
+        } catch (e) {
+          console.error("Failed to parse reports from localStorage, re-initializing", e);
+        }
+      }
+
+      // Default mock reports if empty
+      const defaultReports = [
+        {
+          id: '#RPT-20260622-1084',
+          time: '2026-06-22 09:15:30',
+          category: 'road',
+          categoryText: '路面破損',
+          campus: '光復校區',
+          building: '雲平大樓',
+          coords: [22.9975, 120.2173],
+          description: '雲平大樓前人行道磚塊鬆脫，有多處凹陷，下雨容易積水且絆倒行人。',
+          severity: false,
+          anonymous: true,
+          email: '',
+          status: 'pending',
+          images: [
+            'https://images.unsplash.com/photo-1515162305285-0293e4767cc2?w=600&auto=format&fit=crop&q=80'
+          ]
+        },
+        {
+          id: '#RPT-20260622-3829',
+          time: '2026-06-22 10:42:15',
+          category: 'flood',
+          categoryText: '積水/淹水',
+          campus: '成功校區',
+          building: '成功講堂',
+          coords: [22.9995, 120.2168],
+          description: '成功講堂入口階梯下方大雨後嚴重積水，深度約5公分，師生無法通行。',
+          severity: true,
+          anonymous: false,
+          email: 'student@ncku.edu.tw',
+          status: 'in_progress',
+          images: [
+            'https://images.unsplash.com/photo-1486911278844-a81c5267e227?w=600&auto=format&fit=crop&q=80'
+          ]
+        },
+        {
+          id: '#RPT-20260622-4912',
+          time: '2026-06-22 11:20:00',
+          category: 'parking',
+          categoryText: '違規停車',
+          campus: '自強校區',
+          building: '電機系館',
+          coords: [23.0000, 120.2220],
+          description: '電機系館旁無障礙坡道被多輛機車違規停放阻擋，導致輪椅使用者完全無法通行，請儘速處理。',
+          severity: true,
+          anonymous: true,
+          email: '',
+          status: 'pending',
+          images: [
+            'https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=600&auto=format&fit=crop&q=80'
+          ]
+        }
+      ];
+
+      localStorage.setItem('reports', JSON.stringify(defaultReports));
+      return defaultReports;
+    }
+
+    // Submit Report logic
+    function submitReport() {
+      const submitBtn = document.getElementById('btn-submit');
+      
+      // Spinner in submit button
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> 上傳中，請稍候...`;
+
+      // Get values
+      const campusSelect = document.getElementById('select-campus');
+      const buildingSelect = document.getElementById('select-building');
+      const descText = document.getElementById('issue-description').value;
+      const isSevere = document.getElementById('toggle-severity').checked;
+      const isAnon = document.getElementById('toggle-anonymous').checked;
+      const emailText = document.getElementById('user-email').value;
+
+      const categoryMap = {
+        flood: '積水/淹水',
+        road: '路面破損',
+        parking: '違規停車',
+        facility: '設施損壞',
+        waste: '環境髒亂'
+      };
+
+      const newReport = {
+        id: generatedCaseId,
+        time: new Date().getFullYear() + '-' +
+              String(new Date().getMonth() + 1).padStart(2, '0') + '-' +
+              String(new Date().getDate()).padStart(2, '0') + ' ' +
+              String(new Date().getHours()).padStart(2, '0') + ':' +
+              String(new Date().getMinutes()).padStart(2, '0') + ':' +
+              String(new Date().getSeconds()).padStart(2, '0'),
+        category: selectedCategory,
+        categoryText: categoryMap[selectedCategory] || '其他問題',
+        campus: campusSelect.value || '未知校區',
+        building: buildingSelect.value || '未知地點',
+        coords: currentCoords,
+        description: descText,
+        severity: isSevere,
+        anonymous: isAnon,
+        email: isAnon ? '' : emailText,
+        status: 'pending',
+        images: uploadedImages.map(img => img.src)
+      };
+
+      // Simulate network request delay (1.5 seconds)
+      setTimeout(() => {
+        // Save to localStorage
+        const reportsList = initReports();
+        reportsList.unshift(newReport); // Put new reports at the top
+        localStorage.setItem('reports', JSON.stringify(reportsList));
+
+        // Open Success screen
+        document.getElementById('success-case-id').innerText = generatedCaseId;
+        document.getElementById('success-modal').classList.remove('hidden');
+      }, 1500);
+    }
+
+    // Admin login modal controls
+    function openLoginModal() {
+      document.getElementById('login-modal').classList.remove('hidden');
+    }
+    
+    function closeLoginModal() {
+      document.getElementById('login-modal').classList.add('hidden');
+      document.getElementById('admin-login-form').reset();
+    }
+    
+    function handleLoginSubmit(event) {
+      event.preventDefault();
+      const user = document.getElementById('login-username').value;
+      const pass = document.getElementById('login-password').value;
+      if (user === 'admin' && pass === 'admin') {
+        loginAdmin();
+      } else {
+        showToast("❌ 帳號或密碼錯誤！", "fa-triangle-exclamation");
+      }
+    }
+    
+    function loginAdmin() {
+      closeLoginModal();
+      showToast("🔐 管理員登入成功！", "fa-user-shield");
+      
+      document.getElementById('user-view').classList.add('hidden');
+      document.getElementById('user-footer').classList.add('hidden');
+      document.getElementById('admin-view').classList.remove('hidden');
+      
+      document.getElementById('btn-admin-login').classList.add('hidden');
+      document.getElementById('btn-admin-logout').classList.remove('hidden');
+      
+      const badge = document.getElementById('badge-mockup');
+      badge.innerText = 'Admin Mode';
+      badge.className = 'text-[10px] font-semibold px-2 py-0.5 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-full';
+      
+      initReports();
+      renderAdminReports();
+    }
+    
+    function logoutAdmin() {
+      showToast("🚪 已安全登出管理系統！", "fa-right-from-bracket");
+      
+      document.getElementById('admin-view').classList.add('hidden');
+      document.getElementById('user-view').classList.remove('hidden');
+      document.getElementById('user-footer').classList.remove('hidden');
+      
+      document.getElementById('btn-admin-logout').classList.add('hidden');
+      document.getElementById('btn-admin-login').classList.remove('hidden');
+      
+      const badge = document.getElementById('badge-mockup');
+      badge.innerText = 'Mobile Mockup';
+      badge.className = 'text-[10px] font-semibold px-2 py-0.5 bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 rounded-full';
+    }
+    
+    function setAdminFilter(filter) {
+      currentAdminFilter = filter;
+      const buttons = document.querySelectorAll('#admin-filters button');
+      buttons.forEach(btn => {
+        if (btn.getAttribute('data-filter') === filter) {
+          btn.className = 'text-xs font-semibold px-3 py-1.5 rounded-full bg-cyan-500 text-white cursor-pointer active:scale-95 transition-all';
+        } else {
+          btn.className = 'text-xs font-semibold px-3 py-1.5 rounded-full bg-ios-inner-card text-ios-text-secondary hover:text-ios-text-primary cursor-pointer active:scale-95 transition-all';
+        }
+      });
+      renderAdminReports();
+    }
+    
+    function renderAdminReports() {
+      const reports = initReports();
+      const listContainer = document.getElementById('admin-reports-list');
+      
+      // Calculate stats
+      const total = reports.length;
+      const pending = reports.filter(r => r.status === 'pending').length;
+      const resolved = reports.filter(r => r.status === 'resolved').length;
+      
+      document.getElementById('stat-total').innerText = total;
+      document.getElementById('stat-pending').innerText = pending;
+      document.getElementById('stat-resolved').innerText = resolved;
+      
+      // Filter reports
+      let filtered = reports;
+      if (currentAdminFilter !== 'all') {
+        filtered = reports.filter(r => r.status === currentAdminFilter);
+      }
+      
+      listContainer.innerHTML = '';
+      
+      if (filtered.length === 0) {
+        listContainer.innerHTML = `
+          <div class="text-center py-12 flex flex-col items-center gap-2 bg-ios-inner-card rounded-2xl border border-ios-border-white-5 transition-colors duration-300">
+            <i class="fa-solid fa-folder-open text-3xl text-ios-text-muted"></i>
+            <p class="text-xs text-ios-text-secondary">目前沒有符合篩選條件的案件</p>
+          </div>
+        `;
+        return;
+      }
+      
+      const categoryStyleMap = {
+        flood: { icon: 'fa-cloud-showers-heavy', bg: 'bg-blue-500/10 text-blue-500 dark:text-blue-400' },
+        road: { icon: 'fa-road-barrier', bg: 'bg-orange-500/10 text-orange-500 dark:text-orange-400' },
+        parking: { icon: 'fa-square-parking', bg: 'bg-red-500/10 text-red-500 dark:text-red-400' },
+        facility: { icon: 'fa-screwdriver-wrench', bg: 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400' },
+        waste: { icon: 'fa-trash-can', bg: 'bg-emerald-500/10 text-emerald-500 dark:text-emerald-400' }
+      };
+
+      const statusMap = {
+        pending: { text: '待處理', badge: 'bg-amber-500/15 text-amber-500 border border-amber-500/30' },
+        in_progress: { text: '處理中', badge: 'bg-blue-500/15 text-blue-500 border border-blue-500/30' },
+        resolved: { text: '已解決', badge: 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/30' }
+      };
+
+      filtered.forEach(report => {
+        const catStyle = categoryStyleMap[report.category] || { icon: 'fa-circle-question', bg: 'bg-slate-500/10 text-slate-500' };
+        const statusStyle = statusMap[report.status] || { text: '未知', badge: 'bg-slate-500/10 text-slate-500' };
+        
+        let severeBadge = '';
+        if (report.severity) {
+          severeBadge = `<span class="text-[9px] font-semibold bg-red-500/15 text-red-500 border border-red-500/30 px-2 py-0.5 rounded-full flex items-center gap-0.5 animate-pulse"><i class="fa-solid fa-triangle-exclamation text-[9px]"></i> 加急</span>`;
+        }
+
+        let imagesHtml = '';
+        if (report.images && report.images.length > 0) {
+          imagesHtml = `
+            <div class="flex gap-2 overflow-x-auto py-1 mt-1 border-t border-ios-border-white-5 pt-2.5">
+              ${report.images.map(img => `<img src="${img}" class="w-16 h-16 object-cover rounded-lg border border-white/10 flex-shrink-0 cursor-zoom-in active:scale-95 transition-all" onclick="viewReportPhoto('${img}')">`).join('')}
+            </div>
+          `;
+        }
+
+        const card = document.createElement('div');
+        card.className = "glass-effect rounded-2xl p-4 flex flex-col gap-3.5 transition-all duration-300 border border-ios-border";
+        card.innerHTML = `
+          <!-- Card Header -->
+          <div class="flex items-center justify-between border-b border-ios-border-white-5 pb-2.5">
+            <div class="flex items-center gap-2">
+              <span class="flex items-center justify-center w-7 h-7 rounded-lg ${catStyle.bg}">
+                <i class="fa-solid ${catStyle.icon} text-sm"></i>
+              </span>
+              <div class="flex flex-col">
+                <span class="text-xs font-bold text-ios-text-primary">${report.categoryText}</span>
+                <span class="text-[9px] text-ios-text-secondary">${report.time}</span>
+              </div>
+            </div>
+            <div class="flex gap-1.5 items-center">
+              ${severeBadge}
+              <span class="text-[9px] font-semibold ${statusStyle.badge} px-2 py-0.5 rounded-full">${statusStyle.text}</span>
+            </div>
+          </div>
+
+          <!-- Content Description -->
+          <div class="flex flex-col gap-1">
+            <div class="flex items-center justify-between">
+              <span class="text-[10px] text-ios-text-secondary font-semibold">
+                <i class="fa-solid fa-location-dot text-cyan-500"></i> ${report.campus} - ${report.building}
+              </span>
+              <span class="text-[9px] font-mono text-ios-text-secondary">${report.coords[0].toFixed(5)}, ${report.coords[1].toFixed(5)}</span>
+            </div>
+            <p class="text-xs text-ios-text-secondary leading-relaxed bg-ios-inner-card/50 p-2.5 rounded-lg border border-ios-border-white-5 mt-1">${report.description || '（無內容描述）'}</p>
+          </div>
+
+          <!-- Attachments -->
+          ${imagesHtml}
+
+          <!-- Action Footer -->
+          <div class="flex items-center justify-between border-t border-ios-border-white-5 pt-3 mt-1 gap-2">
+            <div class="flex gap-1">
+              <button onclick="updateReportStatus('${report.id}', 'pending')" class="text-[10px] px-2.5 py-1.5 rounded cursor-pointer active:scale-95 transition-all bg-ios-inner-card text-ios-text-secondary hover:text-ios-text-primary ${report.status === 'pending' ? 'font-bold bg-amber-500/10 text-amber-500 border border-amber-500/20' : 'border border-ios-border-white-5'}">待處理</button>
+              <button onclick="updateReportStatus('${report.id}', 'in_progress')" class="text-[10px] px-2.5 py-1.5 rounded cursor-pointer active:scale-95 transition-all bg-ios-inner-card text-ios-text-secondary hover:text-ios-text-primary ${report.status === 'in_progress' ? 'font-bold bg-blue-500/10 text-blue-500 border border-blue-500/20' : 'border border-ios-border-white-5'}">處理中</button>
+              <button onclick="updateReportStatus('${report.id}', 'resolved')" class="text-[10px] px-2.5 py-1.5 rounded cursor-pointer active:scale-95 transition-all bg-ios-inner-card text-ios-text-secondary hover:text-ios-text-primary ${report.status === 'resolved' ? 'font-bold bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 'border border-ios-border-white-5'}">已解決</button>
+            </div>
+            <div class="flex gap-1.5">
+              <button onclick="showReportOnMap(${report.coords[0]}, ${report.coords[1]}, '${report.categoryText}')" class="w-7 h-7 rounded bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-500 flex items-center justify-center cursor-pointer active:scale-90 transition-all" title="定位地圖"><i class="fa-solid fa-map-location-dot text-xs"></i></button>
+              <button onclick="deleteReport('${report.id}')" class="w-7 h-7 rounded bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 flex items-center justify-center cursor-pointer active:scale-90 transition-all" title="刪除案件"><i class="fa-solid fa-trash-can text-xs"></i></button>
+            </div>
+          </div>
+        `;
+        listContainer.appendChild(card);
+      });
+    }
+    
+    function updateReportStatus(reportId, newStatus) {
+      const reports = initReports();
+      const updated = reports.map(r => {
+        if (r.id === reportId) {
+          r.status = newStatus;
+          showToast(`📋 案件狀態已更新為: ${newStatus === 'pending' ? '待處理' : newStatus === 'in_progress' ? '處理中' : '已解決'}`, "fa-clipboard-check");
+        }
+        return r;
+      });
+      localStorage.setItem('reports', JSON.stringify(updated));
+      renderAdminReports();
+    }
+    
+    function deleteReport(reportId) {
+      if (confirm(`⚠️ 確定要刪除案件 ${reportId} 嗎？`)) {
+        const reports = initReports();
+        const filtered = reports.filter(r => r.id !== reportId);
+        localStorage.setItem('reports', JSON.stringify(filtered));
+        showToast("🗑️ 案件已被安全刪除", "fa-trash-can");
+        renderAdminReports();
+      }
+    }
+    
+    function showReportOnMap(lat, lng, categoryText) {
+      logoutAdmin();
+      currentCoords = [lat, lng];
+      map.setView(currentCoords, 18, { animate: true, duration: 1.0 });
+      mainMarker.setLatLng(currentCoords);
+      updateCoordinateDisplay(lat, lng);
+      setLocationAcquired(true);
+      showToast(`📍 已於地圖定位: ${categoryText} 案件位置`, "fa-location-dot");
+      document.getElementById('card-location').scrollIntoView({ behavior: 'smooth' });
+    }
+    
+    function viewReportPhoto(src) {
+      document.getElementById('lightbox-img').src = src;
+      document.getElementById('photo-modal').classList.remove('hidden');
+    }
+    
+    function closePhotoModal() {
+      document.getElementById('photo-modal').classList.add('hidden');
+    }
+
+    // Reset All inputs
+    function resetAppAndCloseModal() {
+      // 1. Hide success modal
+      document.getElementById('success-modal').classList.add('hidden');
+
+      // 2. Clear inputs
+      document.getElementById('issue-description').value = '';
+      document.getElementById('char-count').innerText = "0 / 200 字";
+
+      // 3. Clear images
+      uploadedImages = [];
+      renderThumbnails();
+
+      // 4. Reset severity switch
+      const severityCheck = document.getElementById('toggle-severity');
+      severityCheck.checked = false;
+      handleSeverityToggle(severityCheck);
+
+      // 5. Reset category chips
+      selectedCategory = null;
+      Object.keys(chipStyles).forEach(cat => {
+        const chipBtn = document.querySelector(`[data-chip="${cat}"]`);
+        if (!chipBtn) return;
+        const style = chipStyles[cat];
+        const iconSpan = chipBtn.querySelector('.icon-span');
+        const textSpan = chipBtn.querySelector('.text-span');
+
+        chipBtn.className = `group flex items-center gap-3 bg-ios-inner-card hover:bg-ios-inner-card/85 active:scale-97 p-3 rounded-xl transition-all duration-200 text-left cursor-pointer`;
+        iconSpan.className = `icon-span flex items-center justify-center w-8 h-8 rounded-lg text-sm transition-colors ${style.iconDefault}`;
+        textSpan.className = `text-span text-xs font-semibold ${style.textDefault}`;
+      });
+
+      // 6. Reset Location
+      hasLocation = false;
+      setLocationAcquired(false);
+      currentCoords = [22.9986, 120.2185];
+      map.setView(currentCoords, 16);
+      mainMarker.setLatLng(currentCoords);
+      updateCoordinateDisplay(currentCoords[0], currentCoords[1]);
+
+      // Reset dropdowns
+      document.getElementById('select-campus').value = '';
+      const buildingSelect = document.getElementById('select-building');
+      buildingSelect.innerHTML = `<option value="" disabled selected>請先選擇校區</option>`;
+      buildingSelect.disabled = true;
+
+      // 7. Reset Anonymous Toggle to active
+      const anonymousCheck = document.getElementById('toggle-anonymous');
+      anonymousCheck.checked = true;
+      handleAnonymousToggle(anonymousCheck);
+      document.getElementById('user-email').value = '';
+
+      // 8. Generate new Report Case Code
+      generateCaseCode();
+
+      // Validate Form again
+      validateForm();
+      showToast("🔄 所有表單狀態已重置為首頁！", "fa-arrow-rotate-left");
+    }
+  </script>
+</body>
+</html>
