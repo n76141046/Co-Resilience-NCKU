@@ -1432,17 +1432,33 @@
         images: uploadedImages.map(img => img.src)
       };
 
-      // Simulate network request delay (1.5 seconds)
-      setTimeout(() => {
-        // Save to localStorage
+      const webAppUrl = 'https://script.google.com/macros/s/AKfycbwVFQ8o4vUgEYqOtIUzAX-nM2CrW-kF01Ma3Ix157k6WkszIVmGKYYMvVImbj0hG3Ia7w/exec';
+
+      // Send the report details to Google Sheets via Web App API
+      fetch(webAppUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain' // Use text/plain to bypass CORS preflight checks
+        },
+        body: JSON.stringify(newReport)
+      })
+      .then(() => {
+        showToast("☁️ 成功同步至雲端試算表！", "fa-cloud");
+      })
+      .catch(err => {
+        // Google Apps Script redirect sometimes causes CORS response block, but data is sent
+        console.log("Data sent to Google Apps Script (redirect response blocked)", err);
+      })
+      .finally(() => {
+        // Save to localStorage for instant local backup and admin dashboard display
         const reportsList = initReports();
-        reportsList.unshift(newReport); // Put new reports at the top
+        reportsList.unshift(newReport);
         localStorage.setItem('reports', JSON.stringify(reportsList));
 
         // Open Success screen
         document.getElementById('success-case-id').innerText = generatedCaseId;
         document.getElementById('success-modal').classList.remove('hidden');
-      }, 1500);
+      });
     }
 
     // Admin login modal controls
